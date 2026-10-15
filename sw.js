@@ -8,7 +8,7 @@
  *    ubin penyedia lain hanya disimpan bila pelanggan menyatakan perjanjiannya mengizinkan,
  *    dengan batas 3.000 ubin (asli: tanpa batas, mengisi penyimpanan ponsel).
  */
-var VERSI = '1.1.0-d8d8d69d';
+var VERSI = '1.1.1-b73db267';
 var CACHE_APP = 'sawitgis-app-' + VERSI;
 var CACHE_PUSTAKA = 'sawitgis-pustaka-r128';
 var CACHE_UBIN = 'sawitgis-ubin-v1';

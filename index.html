@@ -943,6 +943,36 @@ body.ponsel .hud{display:none}
 <div id="tirai" role="dialog" aria-modal="true"><div id="modal"><div id="modalKepala"><b id="modalJudul"></b><button class="tbl ikon" id="modalTutup" type="button" aria-label="Tutup">✕</button></div><div id="modalIsi"></div><div id="modalKaki"></div></div></div>
 <div id="toast" aria-live="polite"></div>
 <div id="cetakWadah"></div>
+<script>
+/* Penjaga mulai: bila skrip aplikasi gagal dimuat (mis. berkas terpotong saat ditempel ke Apps Script)
+   tampilkan penjelasan, bukan layar hitam kosong. */
+(function () {
+  var galat = [];
+  window.addEventListener('error', function (e) {
+    galat.push(String(e.message || 'galat') + (e.lineno ? ' (baris ' + e.lineno + ')' : ''));
+  });
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function periksa() {
+    if (window.__sghMulai || document.getElementById('sghGagalMulai')) return;
+    var el = document.createElement('div');
+    el.id = 'sghGagalMulai';
+    el.setAttribute('role', 'alert');
+    el.style.cssText = 'position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(2,6,23,.92);font:14px/1.55 system-ui,sans-serif;color:#e2e8f0';
+    el.innerHTML = '<div style="max-width:560px;width:100%;background:#0b1324;border:1px solid #7f1d1d;border-radius:18px;padding:20px;max-height:100%;overflow:auto">' +
+      '<h2 style="margin:0 0 8px;font-size:18px;color:#fca5a5">Aplikasi gagal dimulai</h2>' +
+      '<p style="margin:0 0 10px">Halaman termuat, tetapi skrip aplikasi tidak berjalan. Penyebab paling sering:</p>' +
+      '<ol style="margin:0 0 10px;padding-left:20px">' +
+      '<li><b>Berkas HTML terpotong / tidak lengkap</b> saat ditempel ke editor Apps Script. Di Spreadsheet buka menu <b>SawitGIS &#9656; Cek Versi Berkas</b>, lalu tempel ulang berkas yang ditandai.</li>' +
+      '<li><b>Penerapan belum diperbarui</b>: Terapkan &#9656; Kelola penerapan &#9656; Edit &#9656; Versi baru &#9656; Terapkan.</li>' +
+      '<li>Peramban terlalu lama atau ekstensi pemblokir skrip aktif - coba Chrome/Edge terbaru atau jendela penyamaran.</li></ol>' +
+      (galat.length ? '<details open><summary style="cursor:pointer">Pesan galat</summary><pre style="white-space:pre-wrap;font-size:12px;background:#020617;padding:8px;border-radius:8px">' + esc(galat.slice(0, 5).join('\n')) + '</pre></details>' : '') +
+      '<button type="button" onclick="location.reload()" style="margin-top:10px;min-height:44px;padding:0 18px;border-radius:12px;border:0;background:#06b6d4;color:#022c33;font-weight:700">Muat ulang</button></div>';
+    (document.body || document.documentElement).appendChild(el);
+  }
+  window.addEventListener('load', function () { setTimeout(periksa, 1200); });
+  setTimeout(periksa, 20000);
+})();
+</script>
 <script>/* @preserve
  * Leaflet 1.9.4, a JS library for interactive maps. https://leafletjs.com
  * (c) 2010-2023 Vladimir Agafonkin, (c) 2010-2011 CloudMade
@@ -957,9 +987,9 @@ body.ponsel .hud{display:none}
  * 02-inti.js - keadaan global, panggilan peladen, antrian luring, utilitas
  * ===================================================================== */
 'use strict';
-var VERSI_KLIEN = '1.1.0';
+var VERSI_KLIEN = '1.1.1';
 /** Kode bangun (tanggal + sidik isi) diisi build.py. */
-var BANGUN_KLIEN = '20261006.626be33';
+var BANGUN_KLIEN = '20261015.5462b86';
 var CDN_THREE = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
 var KUNCI = { token: 'sgh_token', boot: 'sgh_boot', antrian: 'sgh_antrian', konflik: 'sgh_konflik', gps: 'sgh_gps_antrian',
   pref: 'sgh_pref', jejakSaya: 'sgh_jejak_saya', cuaca: 'sgh_cuaca', perangkat: 'sgh_perangkat' };
@@ -5778,6 +5808,11 @@ function setSistem(el) {
 
 /** Riwayat rilis yang ditampilkan di Tentang ▸ Versi (terbaru di atas). */
 var RIWAYAT_RILIS = [
+  { versi: '1.1.1', tanggal: '2026-10-15', butir: [
+    'Perbaikan layar hitam berkisi tanpa layar masuk di Apps Script: antarmuka dipecah ke Index + Leaflet1-2 + App1-4 (tiap berkas <= 110 KB, baris pendek) agar tidak terpotong saat ditempel.',
+    'Peladen memeriksa setiap bagian (penanda akhir + versi) dan menampilkan nama berkas yang kurang/terpotong/beda versi; menu Cek Versi Berkas ikut memeriksa semua bagian.',
+    'Penjaga mulai: bila skrip gagal berjalan, tampil penyebab, pesan galat, dan langkah perbaikan - bukan layar kosong.',
+    'Three.html terpotong tidak lagi dimuat sebagai kode rusak.'] },
   { versi: '1.1.0', tanggal: '2026-10-06', butir: [
     'Filter Perusahaan & Estate di semua tab, lembar Perusahaan, kolom Estate pada infrastruktur, tabel perbandingan estate di dasbor.',
     'Syarat & Ketentuan dan Pemberitahuan Privasi lengkap (UU 27/2022 PDP) dengan identitas pihak yang dapat diatur di Setelan ▸ Legal & Privasi.',
@@ -6174,12 +6209,14 @@ function pasangServiceWorker() {
   pasangServiceWorker();
   if (S.mode === 'belum') {
     $('#layarMasuk').classList.remove('sembunyi');
+    window.__sghMulai = true;
     $('#layarMasuk').innerHTML = '<div class="kotakMasuk"><h2>Belum terhubung ke peladen</h2><p>Isi <span class="mono">GAS_URL</span> di berkas <b>config.js</b> dengan URL Web App Apps Script Anda (berakhiran <span class="mono">/exec</span>), lalu unggah ulang ke GitHub Pages.</p>' +
       '<pre class="mono" style="white-space:pre-wrap;background:#050b18;padding:10px;border-radius:10px;font-size:12px">window.SAWITGIS_KONFIG = {\n  GAS_URL: \'https://script.google.com/macros/s/XXXX/exec\'\n};</pre><p class="redup kecilTeks">Panduan lengkap: PANDUAN.pdf bab 4.</p></div>';
     return;
   }
   S.token = Simpan.ambil(KUNCI.token, null);
   if (S.token) mulaiAplikasi(); else tampilkanMasuk();
+  window.__sghMulai = true;
   // Info publik (judul/logo) untuk layar masuk berikutnya.
   if (!S.token) panggil('info_publik', {}, { tanpaToken: true }).then(function (i) { Simpan.taruh('sgh_info_publik', i); perbaruiKepalaMasuk(i); }).catch(function () { });
 })();
