@@ -8,7 +8,7 @@
  *    ubin penyedia lain hanya disimpan bila pelanggan menyatakan perjanjiannya mengizinkan,
  *    dengan batas 3.000 ubin (asli: tanpa batas, mengisi penyimpanan ponsel).
  */
-var VERSI = '1.2.0-fcc6934e';
+var VERSI = '1.3.0-1680d566';
 var CACHE_APP = 'sawitgis-app-' + VERSI;
 var CACHE_PUSTAKA = 'sawitgis-pustaka-r128';
 var CACHE_UBIN = 'sawitgis-ubin-v1';
@@ -54,6 +54,8 @@ function pangkasUbin(c) {
 self.addEventListener('fetch', function (e) {
   var req = e.request;
   if (req.method !== 'GET') return;
+  // Permintaan Range (PMTiles foto udara, video) selalu langsung ke jaringan - jangan dilayani dari cache utuh.
+  if (req.headers.has('range')) return;
   var url = new URL(req.url);
   if (/script\.google(usercontent)?\.com$/.test(url.hostname) || /googleusercontent\.com$/.test(url.hostname)) return;
 
