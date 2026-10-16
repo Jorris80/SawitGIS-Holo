@@ -878,6 +878,16 @@ body.ponsel .hud{display:none}
 /* ---------- layar masuk ---------- */
 #layarMasuk{position:fixed;inset:0;z-index:3000;display:grid;place-items:center;padding:16px;overflow:auto;
   background:radial-gradient(circle at 50% 0%,rgba(8,145,178,.25),transparent 60%),radial-gradient(circle at 100% 100%,rgba(16,185,129,.12),transparent 50%),var(--bg)}
+.caraAr{text-align:left;margin-top:6px}.caraAr summary{cursor:pointer;min-height:40px;display:flex;align-items:center;color:var(--aksen2)}
+@media (max-width:700px){#arMuat{padding-right:64px}}
+.ruasAwalBaris{grid-column-start:1}
+.langkahAr{padding-left:20px;margin:6px 0;text-align:left}.langkahAr li{margin-bottom:6px;line-height:1.45}
+.gpsIsi{margin-top:-2px}.gpsIsi .tbl{width:100%;min-height:44px}.teksOk{color:#6ee7b7}.teksGalat{color:#fca5a5}
+#pemuatAwal{position:fixed;inset:0;z-index:40;display:grid;place-items:center;background:rgba(2,6,23,.55);backdrop-filter:blur(2px);padding:16px}
+.pemuatKotak{display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;max-width:320px;background:var(--panel);border:1px solid var(--garis2);border-radius:18px;padding:20px 22px;box-shadow:var(--bayang)}
+.pemuatPutar{width:34px;height:34px;border-radius:50%;border:3px solid var(--garis2);border-top-color:var(--aksen);animation:putar .8s linear infinite}
+@keyframes putar{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.pemuatPutar{animation-duration:2.4s}}
 #layarMasuk .kotakMasuk.kotakSetuju{max-width:680px;max-height:calc(100dvh - 32px);display:flex;flex-direction:column;padding:20px}
 .naskahGulir{flex:1 1 auto;min-height:180px;max-height:52vh;overflow:auto;border:1px solid var(--garis);border-radius:var(--r2);padding:4px 14px 10px;background:rgba(5,11,24,.6);overscroll-behavior:contain}
 .centangSetuju{display:flex;gap:10px;align-items:flex-start;margin-top:10px;font-size:13px;line-height:1.45;cursor:pointer}
@@ -987,9 +997,9 @@ body.ponsel .hud{display:none}
  * 02-inti.js - keadaan global, panggilan peladen, antrian luring, utilitas
  * ===================================================================== */
 'use strict';
-var VERSI_KLIEN = '1.1.1';
+var VERSI_KLIEN = '1.2.0';
 /** Kode bangun (tanggal + sidik isi) diisi build.py. */
-var BANGUN_KLIEN = '20261015.5462b86';
+var BANGUN_KLIEN = '20261016.ac8aef5';
 var CDN_THREE = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
 var KUNCI = { token: 'sgh_token', boot: 'sgh_boot', antrian: 'sgh_antrian', konflik: 'sgh_konflik', gps: 'sgh_gps_antrian',
   pref: 'sgh_pref', jejakSaya: 'sgh_jejak_saya', cuaca: 'sgh_cuaca', perangkat: 'sgh_perangkat' };
@@ -1792,6 +1802,8 @@ function bentukRuas(ruas, nilai, awalan) {
     var atr = (r.wajib ? ' required' : '') + (r.baca ? ' readonly' : '') + ' enterkeyhint="go"';
     var petunjuk = r.petunjuk ? '<div class="petunjuk">' + r.petunjuk + '</div>' : '';
     var lebar = r.lebar ? ' style="grid-column:1/-1"' : '';
+    // Lintang selalu mulai di baris baru agar berdampingan dengan bujur.
+    if (!r.lebar && PASANGAN_KOORD.some(function (p) { return p[0] === r.k; }) && ruas.some(function (x) { return PASANGAN_KOORD.some(function (p) { return p[0] === r.k && p[1] === x.k; }); })) lebar = ' style="grid-column-start:1"';
     if (r.t === 'info') return '<div class="ruas" id="' + id + '"' + lebar + '>' + (r.html || '') + '</div>';
     if (r.t === 'centang') {
       return '<label class="cek"' + lebar + '><input type="checkbox" id="' + id + '"' + (v === true || v === 'true' ? ' checked' : '') + (r.baca ? ' disabled' : '') + '> ' + esc(r.label) + '</label>' + petunjuk;
@@ -1812,9 +1824,85 @@ function bentukRuas(ruas, nilai, awalan) {
       if (r.t === 'sandi') ext = ' autocomplete="' + (r.ac || 'current-password') + '"';
       masuk = '<input type="' + tipe + '" id="' + id + '" value="' + esc(v) + '"' + atr + ext + (r.ph ? ' placeholder="' + esc(r.ph) + '"' : '') + '>';
     }
-    return '<label class="ruas"' + lebar + '><span>' + esc(r.label) + (r.wajib ? ' *' : '') + '</span>' + masuk + petunjuk + '</label>';
+    var html = '<label class="ruas"' + lebar + '><span>' + esc(r.label) + (r.wajib ? ' *' : '') + '</span>' + masuk + petunjuk + '</label>';
+    // Pasangan lintang/bujur -> tombol isi otomatis dari GPS perangkat.
+    var pas = PASANGAN_KOORD.filter(function (p) { return p[1] === r.k; })[0];
+    if (pas && ruas.some(function (x) { return x.k === pas[0]; }) && !r.baca) {
+      html += '<div class="ruas gpsIsi" style="grid-column:1/-1"><button type="button" class="tbl" data-gps-isi="' + esc(awalan) + '" data-lat="' + pas[0] + '" data-lng="' + pas[1] + '">📍 Isi dari GPS perangkat</button>' +
+        '<div class="petunjuk" data-gps-status>Berdiri di titik yang dicatat, lalu tekan tombol. Koordinat diisi otomatis (WGS84).</div></div>';
+    }
+    return html;
   }).join('');
 }
+
+var PASANGAN_KOORD = [['lat', 'lng'], ['pusatLat', 'pusatLng']];
+
+/**
+ * Isi lintang/bujur dari GPS perangkat. Menunggu hingga akurasi <= 10 m (maks 25 detik) lalu memakai
+ * titik terbaik; pengguna bisa menekan tombol lagi untuk memakai titik saat ini lebih cepat.
+ * Bila formulir punya Blok/Estate yang masih kosong, blok/estate di titik itu dipilih otomatis.
+ */
+var _gpsIsi = null;
+function isiDariGps(tombol) {
+  var awalan = tombol.getAttribute('data-gps-isi'), kLat = tombol.getAttribute('data-lat'), kLng = tombol.getAttribute('data-lng');
+  var status = tombol.parentNode.querySelector('[data-gps-status]');
+  var tulisStatus = function (h, jenis) { if (status) { status.innerHTML = h; status.className = 'petunjuk' + (jenis ? ' ' + jenis : ''); } };
+  if (_gpsIsi && _gpsIsi.tombol === tombol) { _gpsIsi.selesai(); return; } // tekan lagi = pakai titik terbaik sekarang
+  if (_gpsIsi) _gpsIsi.batal();
+  if (!navigator.geolocation) { tulisStatus('Perangkat/peramban ini tidak mendukung GPS.', 'teksGalat'); return; }
+  if (window.isSecureContext === false) { tulisStatus('GPS hanya bisa dipakai lewat HTTPS.', 'teksGalat'); return; }
+  var terbaik = null, mulai = Date.now(), labelAsli = '📍 Isi dari GPS perangkat';
+  var jaga, waktu;
+  var keadaan = { tombol: tombol };
+  var bersih = function () { if (jaga !== undefined) navigator.geolocation.clearWatch(jaga); clearInterval(waktu); tombol.textContent = labelAsli; tombol.classList.remove('utama'); _gpsIsi = null; };
+  keadaan.batal = function () { bersih(); tulisStatus('Dibatalkan.'); };
+  keadaan.selesai = function () {
+    if (!terbaik) { bersih(); tulisStatus('Belum mendapat sinyal GPS. Coba di tempat terbuka, lalu tekan lagi.', 'teksGalat'); return; }
+    bersih();
+    var c = terbaik.coords, lat = Math.round(c.latitude * 1e7) / 1e7, lng = Math.round(c.longitude * 1e7) / 1e7;
+    var isi = function (k, v) { var el = document.getElementById(awalan + k); if (el) { el.value = v; el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true })); } };
+    isi(kLat, lat); isi(kLng, lng);
+    var catatan = [], blok = typeof blokDiTitik === 'function' ? blokDiTitik(lng, lat) : null;
+    var selBlok = document.getElementById(awalan + 'blokId');
+    if (blok && selBlok && !selBlok.value && selBlok.querySelector('option[value="' + blok.id + '"]')) { selBlok.value = blok.id; selBlok.dispatchEvent(new Event('change', { bubbles: true })); catatan.push('blok ' + esc(blok.kode) + ' dipilih otomatis'); }
+    else if (blok) catatan.push('di blok ' + esc(blok.kode));
+    var selKebun = document.getElementById(awalan + 'kebunId');
+    var kebun = null;
+    if (blok) { var af = cari('afdeling', blok.afdelingId); kebun = af ? cari('kebun', af.kebunId) : null; }
+    if (!kebun) kebun = daftar('kebun').filter(function (k) { return k.batas && dalamPoligon([lng, lat], k.batas); })[0] || null;
+    if (kebun && selKebun && selKebun.value !== kebun.id && selKebun.querySelector('option[value="' + kebun.id + '"]')) {
+      var sebelumnya = selKebun.value; selKebun.value = kebun.id; selKebun.dispatchEvent(new Event('change', { bubbles: true }));
+      catatan.push('estate ' + esc(kebun.nama) + (sebelumnya ? ' (disesuaikan dengan titik GPS)' : ' dipilih otomatis'));
+    } else if (kebun) catatan.push('estate ' + esc(kebun.nama));
+    if (!blok && !kebun && daftar('kebun').some(function (k) { return k.batas; })) catatan.push('<span class="teksGalat">di luar batas estate - periksa kembali</span>');
+    var akurasi = Math.round(c.accuracy);
+    tulisStatus('✓ ' + lat.toFixed(6) + ', ' + lng.toFixed(6) + ' • akurasi ±' + akurasi + ' m' + (akurasi > 20 ? ' <span class="teksGalat">(kurang teliti - tunggu di tempat terbuka lalu ulangi)</span>' : '') + (catatan.length ? ' • ' + catatan.join(' • ') : ''), akurasi > 20 ? '' : 'teksOk');
+  };
+  _gpsIsi = keadaan;
+  tombol.classList.add('utama');
+  tombol.textContent = '⏳ Mencari sinyal… (tekan untuk pakai sekarang)';
+  tulisStatus('Menunggu GPS… izinkan akses lokasi bila diminta.');
+  waktu = setInterval(function () {
+    if (!document.body.contains(tombol)) { bersih(); return; } // formulir ditutup
+    var dtk = Math.round((Date.now() - mulai) / 1000);
+    if (dtk >= 25) { keadaan.selesai(); return; }
+    if (terbaik) tulisStatus('Akurasi terbaik ±' + Math.round(terbaik.coords.accuracy) + ' m • ' + dtk + ' dtk (menunggu ≤ 10 m, tekan tombol untuk pakai sekarang)');
+  }, 1000);
+  jaga = navigator.geolocation.watchPosition(function (p) {
+    if (!terbaik || p.coords.accuracy < terbaik.coords.accuracy) terbaik = p;
+    if (p.coords.accuracy <= 10) keadaan.selesai();
+  }, function (e) {
+    if (terbaik) { keadaan.selesai(); return; }
+    bersih();
+    var pesan = e.code === 1 ? 'Akses lokasi ditolak. Izinkan lokasi untuk situs ini di pengaturan peramban (ikon gembok di bilah alamat)' + (S.mode === 'gas' ? '. Bila tetap ditolak di versi Apps Script, buka aplikasi lewat versi PWA/GitHub Pages.' : '.') :
+      e.code === 3 ? 'GPS tidak merespons. Nyalakan Lokasi perangkat dan coba di tempat terbuka.' : 'Lokasi tidak tersedia: ' + esc(e.message || '') + '. Pastikan Lokasi/GPS perangkat menyala.';
+    tulisStatus(pesan, 'teksGalat');
+  }, { enableHighAccuracy: true, maximumAge: 0, timeout: 25000 });
+}
+document.addEventListener('click', function (e) {
+  var t = e.target && e.target.closest ? e.target.closest('[data-gps-isi]') : null;
+  if (t) { e.preventDefault(); isiDariGps(t); }
+});
 
 function ambilRuas(ruas, awalan) {
   awalan = awalan || 'f_';
@@ -2000,10 +2088,14 @@ function lakukanMasuk() {
   g.classList.add('sembunyi');
   if (!u || !s) { g.textContent = 'Isi nama pengguna dan kata sandi.'; g.classList.remove('sembunyi'); return; }
   var t = $('#tblMasuk'); t.disabled = true; t.textContent = 'Memeriksa…';
-  panggil('masuk', { username: u, sandi: s }, { tanpaToken: true, diamSesi: true }).then(function (r) {
+  panggil('masuk', { username: u, sandi: s, denganBoot: true }, { tanpaToken: true, diamSesi: true }).then(function (r) {
     S.token = r.token;
     Simpan.taruh(KUNCI.token, r.token);
     S.saya = r.pengguna;
+    // Pengguna lain di perangkat yang sama: salinan data milik akun sebelumnya tidak dipakai.
+    var lama = Simpan.ambil(KUNCI.boot, null);
+    if (lama && lama.saya && lama.saya.id !== r.pengguna.id) { Simpan.hapus(KUNCI.boot); Simpan.hapus('sgh_dem'); }
+    S._bootAwal = r.boot || null;
     if (r.pengguna.harusGantiSandi) return wajibGantiSandi(s);
     return mulaiAplikasi();
   }).catch(function (e) {
@@ -2792,9 +2884,14 @@ function gambarLapisan() {
         ' m<br>Sedimentasi ' + persen(c.sedimentasiPct, 0) + ' • arah alir ' + angka(c.arahAlirDeg) + '°').addTo(g.kanal);
   });
   if (L_.bangunan) daftarLingkup('bangunan').forEach(function (b) {
-    if (!b.batas) return;
-    L.polygon(lintangBujur(b.batas[0]), { color: '#e2e8f0', weight: 1.5, fillColor: '#64748b', fillOpacity: 0.85 })
-      .bindPopup('<b>' + esc(b.nama) + '</b><br>' + esc(b.kode) + ' • ' + angka(b.luasM2) + ' m² • tinggi ' + angka(b.tinggiM, 1) + ' m').addTo(g.bangunan);
+    var isi = '<b>' + esc(b.nama || b.kode) + '</b><br>' + esc(b.kode) + (b.luasM2 ? ' • ' + angka(b.luasM2) + ' m²' : '') + (b.tinggiM ? ' • tinggi ' + angka(b.tinggiM, 1) + ' m' : '') +
+      (isFinite(b.lat) && b.lat !== null && b.lat !== '' ? '<br><span class="mono">' + Number(b.lat).toFixed(6) + ', ' + Number(b.lng).toFixed(6) + '</span>' : '');
+    if (b.batas) {
+      L.polygon(lintangBujur(b.batas[0]), { color: '#e2e8f0', weight: 1.5, fillColor: '#64748b', fillOpacity: 0.85 }).bindPopup(isi).addTo(g.bangunan);
+    } else if (b.lat !== null && b.lat !== '' && isFinite(b.lat) && isFinite(b.lng)) {
+      L.marker([Number(b.lat), Number(b.lng)], { icon: L.divIcon({ className: '', html: '<div class="ikonTitik" style="width:18px;height:18px;background:#64748b;border:2px solid #e2e8f0;border-radius:3px;display:grid;place-items:center;font-size:10px">🏠</div>', iconSize: [18, 18], iconAnchor: [9, 9] }) })
+        .bindPopup(isi).addTo(g.bangunan);
+    }
   });
   if (L_.pintu) daftarLingkup('pintuAir').forEach(function (p) {
     if (!isFinite(p.lat)) return;
@@ -4879,17 +4976,33 @@ var STANDAR_TUMBUH = {
   AFKIR27: { label: 'Afkir (27 thn) - kandidat replanting', umur: 27, tinggi: 13.5, diameter: 48, pelepah: 30, produksi: 13.5, bjr: 26,
     tunas: 'Egrek teleskopik; panen habis pelepah penopang', catatan: 'Rentan rebah & Ganoderma. Masuk rencana peremajaan.' }
 };
+var HTML_CARA_AR = '<ol class="langkahAr">' +
+  '<li><b>Berdiri ±5-10 m</b> dari pokok yang ingin diperiksa, arahkan kamera belakang ke pokok itu.</li>' +
+  '<li>Tekan <b>Nyalakan kamera</b> dan izinkan kamera & lokasi. GPS menunjukkan blok tempat Anda berdiri beserta umurnya.</li>' +
+  '<li>Buka <b>🎛️ Kendali</b>: pilih standar fase tumbuh (atau ketuk saran "Pakai standar..." sesuai umur blok).</li>' +
+  '<li>Sejajarkan model dengan pokok nyata: atur <b>Skala</b> sampai pangkal & pucuk model menempel ke pokok, <b>Putar</b> bila perlu, turunkan <b>Opasitas</b> agar pokok nyata tetap terlihat.</li>' +
+  '<li><b>Bandingkan</b>: tinggi (penggaris di kiri), kerapatan tajuk & jumlah pelepah. Pokok jauh lebih pendek/jarang dari standar umurnya = tanda masalah (hara, air, hama).</li>' +
+  '<li>Tekan <b>📸 Potret</b> untuk menyimpan foto gabungan (kamera + model + keterangan blok/fase) sebagai bukti laporan lapangan.</li></ol>';
+var HTML_GUNA_AR = '<h4>Kegunaan</h4><ul>' +
+  '<li>Penilaian cepat pertumbuhan TBM/TM terhadap standar umur, tanpa alat ukur.</li>' +
+  '<li>Pelatihan mandor & asisten baru mengenali pokok normal per fase (tinggi, diameter, pelepah, aturan tunas/songgo).</li>' +
+  '<li>Contoh visual gejala Ganoderma (opsi simulasi) untuk sosialisasi sensus penyakit.</li>' +
+  '<li>Dokumentasi: potret berlabel blok & fase untuk laporan atau usulan replanting.</li></ul>' +
+  '<p class="peringatanKotak">Model adalah pembanding visual, bukan alat ukur. Angka penggaris mengikuti tinggi standar model; tinggi pokok sebenarnya hanya bisa diperkirakan bila jarak ke pokok diketahui.</p>';
+
 var AR = { aliran: null, ruang: null, pokok: null, fase: 'TM12', opas: 0.85, rangka: false, penggaris: true, hantu: false, skala: 1, putar: 0, arah: null, posisi: null, jaga: null };
 
 PENANGAN_TAB.ar = {
   buka: function (w) {
     w.innerHTML = '<div id="arWadah"><video id="arVideo" playsinline muted autoplay></video><div id="arKanvas" style="position:absolute;inset:0"></div><div class="arPenggaris" id="arPenggaris"></div>' +
-      '<div class="muat3d" id="arMuat"><div class="kartu" style="max-width:420px"><h3>📷 AR Kamera</h3><p>Bandingkan pokok di depan Anda dengan model standar fase tumbuh. Kamera & lokasi diproses di perangkat saja.</p>' +
-      '<button class="tbl utama" id="arMulai">Nyalakan kamera</button><p class="petunjuk">Butuh izin kamera. Di mode Apps Script bingkai Google sering memblokir kamera - pakai versi PWA (GitHub Pages).</p></div></div></div>' +
-      '<div class="tombolApung" style="right:10px;top:10px"><button class="tbl ikon" id="arPanelT" title="Kendali">🎛️</button><button class="tbl ikon" id="arFoto" title="Potret">📸</button></div>' +
+      '<div class="muat3d" id="arMuat"><div class="kartu" style="max-width:460px;max-height:calc(100% - 24px);overflow:auto"><h3>📷 AR Kamera</h3><p>Bandingkan pokok sawit di depan Anda dengan <b>model 3D pokok standar</b> sesuai umur/fase tumbuh, langsung di atas gambar kamera. Kamera & lokasi diproses di perangkat saja.</p>' +
+      '<button class="tbl utama" id="arMulai" style="width:100%">Nyalakan kamera</button><p class="petunjuk">Butuh izin kamera. Di mode Apps Script bingkai Google sering memblokir kamera - pakai versi PWA (GitHub Pages).</p>' +
+      '<details class="caraAr"><summary><b>Cara pakai (6 langkah)</b></summary>' + HTML_CARA_AR + '</details></div></div></div>' +
+      '<div class="tombolApung" style="right:10px;top:10px"><button class="tbl ikon" id="arBantu" title="Cara pakai">❓</button><button class="tbl ikon" id="arPanelT" title="Kendali">🎛️</button><button class="tbl ikon" id="arFoto" title="Potret">📸</button></div>' +
       '<div class="hud" id="arHud" ></div>';
     $('#arMulai').onclick = mulaiAr;
     $('#arPanelT').onclick = panelAr;
+    $('#arBantu').onclick = function () { modalBuka('Cara pakai AR Kamera', HTML_CARA_AR + HTML_GUNA_AR, '<button class="tbl utama" onclick="modalTutup()">Mengerti</button>', { tanpaFokus: true }); };
     $('#arFoto').onclick = potretAr;
     if (!document.body.classList.contains('ponsel')) panelAr();
   },
@@ -5082,7 +5195,7 @@ var RUAS = {
     { k: 'baris', label: 'Baris', t: 'angka', langkah: 1 }, { k: 'kolom', label: 'Pokok ke-', t: 'angka', langkah: 1 },
     { k: 'status', label: 'Status', t: 'pilih', opsi: OPSI.statusPokok, wajib: true }, { k: 'tinggiM', label: 'Tinggi (m)', t: 'angka', min: 0, max: 25 },
     { k: 'pelepah', label: 'Jumlah pelepah', t: 'angka', min: 0, langkah: 1 }, { k: 'tanggal', label: 'Tanggal', t: 'tanggal' },
-    { k: 'lat', label: 'Lintang', t: 'angka' }, { k: 'lng', label: 'Bujur', t: 'angka' },
+    { k: 'lat', label: 'Lintang', t: 'angka', min: -90, max: 90 }, { k: 'lng', label: 'Bujur', t: 'angka', min: -180, max: 180 },
     { k: 'catatan', label: 'Catatan', t: 'area', lebar: true }
   ]; },
   Hama: function () { return [
@@ -5090,7 +5203,8 @@ var RUAS = {
     { k: 'jenis', label: 'Jenis OPT', t: 'pilih', opsi: OPSI.jenisHama, wajib: true }, { k: 'tingkat', label: 'Tingkat serangan', t: 'pilih', opsi: OPSI.tingkatHama },
     { k: 'pokokTerserang', label: 'Pokok terserang', t: 'angka', min: 0, langkah: 1 }, { k: 'seranganPct', label: 'Serangan (%)', t: 'angka', min: 0, max: 100 },
     { k: 'tindakan', label: 'Tindakan / rekomendasi', t: 'area', lebar: true }, { k: 'terkendali', label: 'Sudah terkendali', t: 'centang' },
-    { k: 'pemeriksa', label: 'Pemeriksa' }
+    { k: 'pemeriksa', label: 'Pemeriksa' },
+    { k: 'lat', label: 'Lintang titik pengamatan', t: 'angka', min: -90, max: 90 }, { k: 'lng', label: 'Bujur titik pengamatan', t: 'angka', min: -180, max: 180 }
   ]; },
   Pemupukan: function () { return [
     { k: 'blokId', label: 'Blok', t: 'pilih', opsi: opsiBlok(), wajib: true }, { k: 'tanggal', label: 'Tanggal', t: 'tanggal', wajib: true },
@@ -5102,7 +5216,7 @@ var RUAS = {
     { k: 'blokId', label: 'Blok', t: 'pilih', opsi: opsiBlok(), wajib: true }, { k: 'tanggal', label: 'Tanggal', t: 'tanggal' },
     { k: 'ordo', label: 'Klasifikasi (USDA)' }, { k: 'tekstur', label: 'Tekstur' }, { k: 'gambutCm', label: 'Gambut (cm)', t: 'angka', min: 0 },
     { k: 'ph', label: 'pH H₂O', t: 'angka', min: 2, max: 10 }, { k: 'cOrganikPct', label: 'C-organik (%)', t: 'angka', min: 0 },
-    { k: 'drainase', label: 'Kelas drainase' }, { k: 'lat', label: 'Lintang titik bor', t: 'angka' }, { k: 'lng', label: 'Bujur titik bor', t: 'angka' }
+    { k: 'drainase', label: 'Kelas drainase' }, { k: 'lat', label: 'Lintang titik bor', t: 'angka', min: -90, max: 90 }, { k: 'lng', label: 'Bujur titik bor', t: 'angka', min: -180, max: 180 }
   ]; },
   Replanting: function () { return [
     { k: 'blokId', label: 'Blok', t: 'pilih', opsi: opsiBlok(), wajib: true }, { k: 'prioritas', label: 'Prioritas', t: 'angka', min: 1, langkah: 1 },
@@ -5119,7 +5233,8 @@ var RUAS = {
     { k: 'perusahaanId', label: 'Perusahaan', t: 'pilih', kosong: '- pilih -', opsi: opsiPerusahaanData(), petunjuk: 'Tambah perusahaan di Data Lapangan ▸ Infrastruktur ▸ Perusahaan.',
       bawaan: S.lingkup.perusahaan !== 'ALL' && S.lingkup.perusahaan.indexOf('TEKS:') < 0 ? S.lingkup.perusahaan : '' },
     { k: 'provinsi', label: 'Provinsi' }, { k: 'kabupaten', label: 'Kabupaten' }, { k: 'kecamatan', label: 'Kecamatan' }, { k: 'luasHguHa', label: 'Luas HGU (ha)', t: 'angka', min: 0 },
-    { k: 'elevMinM', label: 'Elevasi min (m)', t: 'angka' }, { k: 'elevMaxM', label: 'Elevasi maks (m)', t: 'angka' }, { k: 'zonaUtm', label: 'Zona UTM', ph: '47N' }]; },
+    { k: 'elevMinM', label: 'Elevasi min (m)', t: 'angka' }, { k: 'elevMaxM', label: 'Elevasi maks (m)', t: 'angka' }, { k: 'zonaUtm', label: 'Zona UTM', ph: '47N' },
+    { k: 'pusatLat', label: 'Lintang pusat kebun', t: 'angka', min: -90, max: 90, petunjuk: 'Dipakai untuk prakiraan cuaca & posisi awal peta. Terisi otomatis dari batas kebun bila ada.' }, { k: 'pusatLng', label: 'Bujur pusat kebun', t: 'angka', min: -180, max: 180 }]; },
   Jalan: function () { return [RUAS_KEBUN_ID(), { k: 'kode', label: 'Kode', wajib: true }, { k: 'nama', label: 'Nama' }, { k: 'jenis', label: 'Jenis', t: 'pilih', opsi: OPSI.jenisJalan },
     { k: 'permukaan', label: 'Permukaan' }, { k: 'lebarM', label: 'Lebar (m)', t: 'angka', min: 0 }, { k: 'panjangM', label: 'Panjang (m)', t: 'angka', min: 0 },
     { k: 'kondisi', label: 'Kondisi', t: 'pilih', opsi: ['Excellent', 'Good', 'Fair', 'Poor', 'Impassable'] }, { k: 'bebanGandarTon', label: 'Beban gandar (t)', t: 'angka', min: 0 }]; },
@@ -5128,14 +5243,15 @@ var RUAS = {
     { k: 'panjangM', label: 'Panjang (m)', t: 'angka', min: 0 }, { k: 'arahAlirDeg', label: 'Arah alir (°)', t: 'angka', min: 0, max: 360 }, { k: 'sedimentasiPct', label: 'Sedimentasi (%)', t: 'angka', min: 0, max: 100 }]; },
   PintuAir: function () { return [RUAS_KEBUN_ID(), { k: 'kode', label: 'Kode', wajib: true }, { k: 'nama', label: 'Nama' }, { k: 'kanalId', label: 'Kanal', t: 'pilih', kosong: '-', opsi: daftar('kanal').map(function (c) { return [c.id, c.kode]; }) },
     { k: 'jenis', label: 'Jenis', t: 'pilih', opsi: OPSI.jenisPintu }, { k: 'lebarM', label: 'Lebar (m)', t: 'angka', min: 0 }, { k: 'tinggiM', label: 'Tinggi (m)', t: 'angka', min: 0 },
-    { k: 'mukaHuluCm', label: 'Muka air hulu (cm)', t: 'angka' }, { k: 'mukaHilirCm', label: 'Muka air hilir (cm)', t: 'angka' }, { k: 'lat', label: 'Lintang', t: 'angka', wajib: true }, { k: 'lng', label: 'Bujur', t: 'angka', wajib: true }]; },
+    { k: 'mukaHuluCm', label: 'Muka air hulu (cm)', t: 'angka' }, { k: 'mukaHilirCm', label: 'Muka air hilir (cm)', t: 'angka' }, { k: 'lat', label: 'Lintang', t: 'angka', wajib: true, min: -90, max: 90 }, { k: 'lng', label: 'Bujur', t: 'angka', wajib: true, min: -180, max: 180 }]; },
   Bangunan: function () { return [RUAS_KEBUN_ID(), { k: 'kode', label: 'Kode', wajib: true }, { k: 'nama', label: 'Nama' }, { k: 'jenis', label: 'Jenis', t: 'pilih', opsi: OPSI.jenisBangunan },
-    { k: 'luasM2', label: 'Luas (m²)', t: 'angka', min: 0 }, { k: 'tinggiM', label: 'Tinggi (m)', t: 'angka', min: 0 }, { k: 'lantai', label: 'Lantai', t: 'angka', min: 1, langkah: 1 }]; },
+    { k: 'luasM2', label: 'Luas (m²)', t: 'angka', min: 0 }, { k: 'tinggiM', label: 'Tinggi (m)', t: 'angka', min: 0 }, { k: 'lantai', label: 'Lantai', t: 'angka', min: 1, langkah: 1 },
+    { k: 'lat', label: 'Lintang', t: 'angka', min: -90, max: 90, petunjuk: 'Titik bangunan (mis. pintu masuk). Bangunan tanpa poligon tampil sebagai penanda di peta.' }, { k: 'lng', label: 'Bujur', t: 'angka', min: -180, max: 180 }]; },
   Sensor: function () { return [RUAS_KEBUN_ID(), { k: 'kode', label: 'Kode / DevEUI', wajib: true }, { k: 'nama', label: 'Nama', wajib: true }, { k: 'jenis', label: 'Jenis', t: 'pilih', opsi: OPSI.jenisSensor },
-    { k: 'blokId', label: 'Blok', t: 'pilih', kosong: '-', opsi: opsiBlok() }, { k: 'satuan', label: 'Satuan', ph: 'cm' }, { k: 'lat', label: 'Lintang', t: 'angka', wajib: true }, { k: 'lng', label: 'Bujur', t: 'angka', wajib: true },
+    { k: 'blokId', label: 'Blok', t: 'pilih', kosong: '-', opsi: opsiBlok() }, { k: 'satuan', label: 'Satuan', ph: 'cm' }, { k: 'lat', label: 'Lintang', t: 'angka', wajib: true, min: -90, max: 90 }, { k: 'lng', label: 'Bujur', t: 'angka', wajib: true, min: -180, max: 180 },
     { k: 'aktif', label: 'Aktif', t: 'centang', bawaan: true }]; },
   Cuaca: function () { return [RUAS_KEBUN_ID(), { k: 'kode', label: 'Kode', wajib: true }, { k: 'nama', label: 'Nama', wajib: true }, { k: 'afdelingId', label: 'Afdeling', t: 'pilih', kosong: '-', opsi: opsiAfdeling() },
-    { k: 'zonaTanah', label: 'Zona tanah' }, { k: 'lat', label: 'Lintang', t: 'angka', wajib: true }, { k: 'lng', label: 'Bujur', t: 'angka', wajib: true },
+    { k: 'zonaTanah', label: 'Zona tanah' }, { k: 'lat', label: 'Lintang', t: 'angka', wajib: true, min: -90, max: 90 }, { k: 'lng', label: 'Bujur', t: 'angka', wajib: true, min: -180, max: 180 },
     { k: 'hujanMmJam', label: 'Intensitas hujan (mm/jam)', t: 'angka', min: 0 }, { k: 'hujan24Mm', label: 'Hujan 24 jam (mm)', t: 'angka', min: 0 }, { k: 'suhuC', label: 'Suhu (°C)', t: 'angka' },
     { k: 'rhPct', label: 'RH (%)', t: 'angka', min: 0, max: 100 }, { k: 'anginKmh', label: 'Angin (km/j)', t: 'angka', min: 0 }, { k: 'arahAnginDeg', label: 'Arah angin (°)', t: 'angka', min: 0, max: 360 },
     { k: 'tekananHpa', label: 'Tekanan (hPa)', t: 'angka' }, { k: 'radiasiWm2', label: 'Radiasi (W/m²)', t: 'angka', min: 0 }, { k: 'mukaAirCm', label: 'Muka air setempat (cm)', t: 'angka' }]; }
@@ -5808,6 +5924,13 @@ function setSistem(el) {
 
 /** Riwayat rilis yang ditampilkan di Tentang ▸ Versi (terbaru di atas). */
 var RIWAYAT_RILIS = [
+  { versi: '1.2.0', tanggal: '2026-10-16', butir: [
+    'Tombol "📍 Isi dari GPS perangkat" di setiap formulir berkoordinat: menunggu akurasi <= 10 m, mengisi lintang/bujur, dan memilih blok/estate otomatis bila titik berada di dalamnya.',
+    'Kolom lintang & bujur baru: Bangunan (tampil sebagai penanda di peta bila tanpa poligon), Sensus hama & penyakit (titik pengamatan), dan pusat Kebun.',
+    'Validasi koordinat di peladen (rentang WGS84, wajib berpasangan).',
+    'Mulai lebih cepat: membuka ulang langsung dari salinan di perangkat lalu disegarkan di latar; data awal ikut dikirim saat masuk (hemat satu panggilan); peladen membaca tiap lembar dengan 1 panggilan dan menyimpan data acuan di cache.',
+    'Penanda "Memuat data kebun…" saat pertama kali memuat.',
+    'AR Kamera: panduan cara pakai & kegunaan di layar awal dan tombol ❓.'] },
   { versi: '1.1.1', tanggal: '2026-10-15', butir: [
     'Perbaikan layar hitam berkisi tanpa layar masuk di Apps Script: antarmuka dipecah ke Index + Leaflet1-2 + App1-4 (tiap berkas <= 110 KB, baris pendek) agar tidak terpotong saat ditempel.',
     'Peladen memeriksa setiap bagian (penanda akhir + versi) dan menampilkan nama berkas yang kurang/terpotong/beda versi; menu Cek Versi Berkas ikut memeriksa semua bagian.',
@@ -6117,7 +6240,22 @@ function mulaiAplikasi() {
   aturTataLetak();
   var pref0 = Simpan.ambil(KUNCI.pref, {});
   if (pref0.lingkup && pref0.lingkup.perusahaan) S.lingkup = { perusahaan: pref0.lingkup.perusahaan, kebun: pref0.lingkup.kebun || 'ALL' };
-  return panggil('bootstrap', {}).then(function (b) {
+  var siap = S._bootAwal; S._bootAwal = null;
+  var simpan = Simpan.ambil(KUNCI.boot, null);
+
+  // Jalur cepat (membuka ulang): tampilkan dari salinan di perangkat seketika, segarkan di latar.
+  if (!siap && simpan && simpan.saya && simpan.legal && simpan.blok) {
+    terapkanBoot(simpan);
+    var dm = Simpan.ambil('sgh_dem', null);
+    if (dm && dm.kebunId === S.kebunAktif) window._demImpor = demDariPaket(dm);
+    selesaiMulai();
+    segarkanDiLatar();
+    return Promise.resolve(simpan);
+  }
+
+  pemuatAwal(true);
+  var janji = siap ? Promise.resolve(siap) : panggil('bootstrap', {});
+  return janji.then(function (b) {
     terapkanBoot(b);
     simpanBoot();
     simpanInfoPublik();
@@ -6125,7 +6263,6 @@ function mulaiAplikasi() {
   }).catch(function (e) {
     if (e.kode === 'SESI') throw e;
     if (e.kode === 'GANTI_SANDI') { wajibGantiSandi(''); throw e; }
-    var simpan = Simpan.ambil(KUNCI.boot, null);
     if (simpan && simpan.saya) {
       terapkanBoot(simpan);
       var d = Simpan.ambil('sgh_dem', null);
@@ -6135,20 +6272,74 @@ function mulaiAplikasi() {
     }
     throw e;
   }).then(function () {
-    if (perluSetujuLegal()) { tampilkanPersetujuan(); return; }
-    terapkanMerek();
-    perbaruiChip();
-    perbaruiSpanduk();
-    bilahLingkup();
-    var p = Simpan.ambil(KUNCI.pref, {});
-    var awal = (location.hash || '').replace('#', '') || p.tab || 'peta';
-    history.replaceState({ sgh: 'tab', tab: awal }, '');
-    bukaTab(awal, null, { dariRiwayat: true });
-    if (S.antrian.length) setTimeout(function () { sinkronkan(true); }, 1500);
-    muatRekap().catch(function () { });
+    pemuatAwal(false);
+    selesaiMulai();
   }).catch(function (e) {
+    pemuatAwal(false);
     if (e.kode !== 'GANTI_SANDI') tampilkanMasuk(e.kode === 'SESI' ? e.message : 'Gagal memuat aplikasi: ' + e.message);
   });
+}
+
+/** Bagian akhir mulai: merek, spanduk, filter, tab awal, sinkron & rekap. */
+function selesaiMulai() {
+  if (perluSetujuLegal()) { tampilkanPersetujuan(); return; }
+  terapkanMerek();
+  perbaruiChip();
+  perbaruiSpanduk();
+  bilahLingkup();
+  var p = Simpan.ambil(KUNCI.pref, {});
+  var awal = (location.hash || '').replace('#', '') || p.tab || 'peta';
+  history.replaceState({ sgh: 'tab', tab: awal }, '');
+  bukaTab(awal, null, { dariRiwayat: true });
+  if (S.antrian.length) setTimeout(function () { sinkronkan(true); }, 1500);
+  setTimeout(function () { muatRekap().catch(function () { }); }, 300);
+}
+
+/** Ambil data terbaru tanpa menghalangi tampilan; gambar ulang HANYA bila datanya berubah. */
+function sidikData(b) {
+  if (!b) return '';
+  var o = {};
+  for (var k in b) if (k !== 'waktuPeladen' && k !== '_disimpan' && k !== 'lisensi') o[k] = b[k];
+  o.lisensi = b.lisensi ? { paket: b.lisensi.paket, aktif: b.lisensi.aktif, pesan: b.lisensi.pesan } : null;
+  try { return JSON.stringify(o); } catch (e) { return String(Math.random()); }
+}
+function segarkanDiLatar() {
+  var lama = sidikData(S.data);
+  return panggil('bootstrap', {}).then(function (b) {
+    var kebunLama = S.kebunAktif;
+    terapkanBoot(b);
+    simpanBoot();
+    simpanInfoPublik();
+    if (perluSetujuLegal()) { tampilkanPersetujuan(); return; }
+    var berubah = sidikData(b) !== lama;
+    var demBaru = S.kebunAktif !== kebunLama || (b.demTersedia || []).indexOf(S.kebunAktif) >= 0 !== !!window._demImpor;
+    var lanjut = demBaru ? muatDem(b) : Promise.resolve();
+    return lanjut.then(function () {
+      if (!berubah && !demBaru) return;
+      terapkanMerek(); perbaruiChip(); perbaruiSpanduk(); bilahLingkup();
+      // Jangan ganggu pengguna yang sedang mengetik/mengisi formulir.
+      var aktif = document.activeElement;
+      var sedangIsi = (aktif && /INPUT|TEXTAREA|SELECT/.test(aktif.tagName)) || (window._modal && _modal.terbuka);
+      if (sedangIsi) toast('Data terbaru sudah dimuat - akan tampil saat tab dibuka ulang.', 'ok', 3500);
+      else if (typeof gambarUlangTab === 'function') gambarUlangTab();
+    });
+  }).catch(function (e) {
+    if (e.kode === 'GANTI_SANDI') { wajibGantiSandi(''); return; }
+    if (!galatJaringan(e) && e.kode !== 'SESI' && e.kode !== 'LEGAL') toast('Gagal menyegarkan data: ' + e.message, 'galat');
+    else if (galatJaringan(e)) toast('Luring - memakai data tersimpan ' + waktuTeks(S.data && S.data._disimpan) + '.', 'galat', 4000);
+  });
+}
+
+/** Penanda "sedang memuat" agar layar tidak tampak membeku saat data pertama diambil. */
+function pemuatAwal(tampil) {
+  var el = $('#pemuatAwal');
+  if (!tampil) { if (el) el.remove(); return; }
+  if (el) return;
+  el = document.createElement('div');
+  el.id = 'pemuatAwal';
+  el.setAttribute('role', 'status');
+  el.innerHTML = '<div class="pemuatKotak"><div class="pemuatPutar" aria-hidden="true"></div><b>Memuat data kebun…</b><span class="redup kecilTeks">Pertama kali bisa beberapa detik. Berikutnya aplikasi terbuka dari salinan di perangkat.</span></div>';
+  $('#app').appendChild(el);
 }
 
 /** Info yang dibutuhkan layar masuk & naskah legal sebelum masuk berikutnya. */
