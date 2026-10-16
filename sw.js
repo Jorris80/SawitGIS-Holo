@@ -8,13 +8,14 @@
  *    ubin penyedia lain hanya disimpan bila pelanggan menyatakan perjanjiannya mengizinkan,
  *    dengan batas 3.000 ubin (asli: tanpa batas, mengisi penyimpanan ponsel).
  */
-var VERSI = '1.3.0-1680d566';
+var VERSI = '1.3.1-191657bf';
 var CACHE_APP = 'sawitgis-app-' + VERSI;
 var CACHE_PUSTAKA = 'sawitgis-pustaka-r128';
 var CACHE_UBIN = 'sawitgis-ubin-v1';
 var CACHE_META = 'sawitgis-meta';
 var CDN_THREE = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
 var INTI = ['./', 'index.html', 'manifest.webmanifest', 'ikon-512.png'];
+// start_url di manifest ('./?sumber=pwa') dilayani dari salinan index.html yang sama - ikon di layar utama tetap terbuka saat luring.
 var MAKS_UBIN = 3000;
 var izinUbin = {};
 
@@ -87,7 +88,7 @@ self.addEventListener('fetch', function (e) {
       return r;
     }).catch(function () {
       return caches.open(CACHE_APP).then(function (c) {
-        return c.match('index.html').then(function (a) { return a || c.match('./'); }).then(function (a) {
+        return c.match('index.html', { ignoreSearch: true }).then(function (a) { return a || c.match('./', { ignoreSearch: true }); }).then(function (a) {
           return a || new Response('<h1>Luring</h1><p>Aplikasi belum tersimpan di perangkat ini. Buka sekali saat ada internet.</p>', { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
         });
       });

@@ -881,6 +881,8 @@ body.ponsel .hud{display:none}
 .caraAr{text-align:left;margin-top:6px}.caraAr summary{cursor:pointer;min-height:40px;display:flex;align-items:center;color:var(--aksen2)}
 @media (max-width:700px){#arMuat{padding-right:64px}}
 .ruasAwalBaris{grid-column-start:1}
+#tawarPasang{position:fixed;left:12px;right:12px;bottom:calc(76px + env(safe-area-inset-bottom));z-index:70;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;background:var(--panel);border:1px solid var(--aksen);border-radius:16px;padding:10px 12px;box-shadow:var(--bayang);max-width:560px;margin:0 auto}
+#tawarPasang .tbl{min-height:40px}
 .kisiFoto{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:8px;margin-top:6px}
 .kisiFoto.besar{grid-template-columns:repeat(auto-fill,minmax(140px,1fr))}
 .ubinFoto{position:relative;aspect-ratio:1/1;border-radius:12px;overflow:hidden;background:var(--panel3);border:1px solid var(--garis);cursor:zoom-in;margin:0}
@@ -1009,9 +1011,9 @@ body.ponsel .hud{display:none}
  * 02-inti.js - keadaan global, panggilan peladen, antrian luring, utilitas
  * ===================================================================== */
 'use strict';
-var VERSI_KLIEN = '1.3.0';
+var VERSI_KLIEN = '1.3.1';
 /** Kode bangun (tanggal + sidik isi) diisi build.py. */
-var BANGUN_KLIEN = '20261016.8dbfd0e';
+var BANGUN_KLIEN = '20261016.dee47f3';
 var CDN_THREE = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
 var KUNCI = { token: 'sgh_token', boot: 'sgh_boot', antrian: 'sgh_antrian', konflik: 'sgh_konflik', gps: 'sgh_gps_antrian',
   pref: 'sgh_pref', jejakSaya: 'sgh_jejak_saya', cuaca: 'sgh_cuaca', perangkat: 'sgh_perangkat' };
@@ -2071,13 +2073,14 @@ function tampilkanMasuk(pesan) {
     '<div id="mGalat" class="galatKotak sembunyi" style="margin-top:10px"></div>' +
     (demo ? '<h4 style="margin-top:16px">Akun demo</h4><div class="kisi k2" id="mDemo"></div><p class="kecilTeks" style="text-align:center"><a href="#" id="mResetDemo">Atur ulang data demo</a></p>' : '') +
     '<p class="redup kecilTeks" style="margin-top:16px;text-align:center">v' + VERSI_KLIEN + ' • ' +
-    '<a href="#" id="mLegal">Syarat & Ketentuan</a> • <a href="#" id="mPrivasi">Privasi</a>' + (S.mode === 'pwa' ? ' • <span title="' + esc((window.SAWITGIS_KONFIG || {}).GAS_URL || '') + '">PWA</span>' : '') + '</p>' +
+    '<a href="#" id="mLegal">Syarat & Ketentuan</a> • <a href="#" id="mPrivasi">Privasi</a>' + (S.mode === 'pwa' && !modeMandiri() ? ' • <a href="#" id="mPasang">📲 Pasang di HP</a>' : '') + (S.mode === 'pwa' ? ' • <span title="' + esc((window.SAWITGIS_KONFIG || {}).GAS_URL || '') + '">PWA</span>' : '') + '</p>' +
     '</div>';
   $('#mLihat').onclick = function () { var s = $('#mSandi'); s.type = s.type === 'password' ? 'text' : 'password'; };
   $('#mUser').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); $('#mSandi').focus(); } });
   $('#tblMasuk').onclick = lakukanMasuk;
   $('#mLegal').onclick = function (e) { e.preventDefault(); bukaDokumenLegal('sk'); };
   $('#mPrivasi').onclick = function (e) { e.preventDefault(); bukaDokumenLegal('privasi'); };
+  if ($('#mPasang')) $('#mPasang').onclick = function (e) { e.preventDefault(); modalBuka('Pasang di HP', '<div id="modalPasang">' + htmlPasangKartu() + '</div>', '<button class="tbl utama" onclick="modalTutup()">Tutup</button>', { tanpaFokus: true }); pasangKartuPasang($('#modalPasang')); };
   if (demo && window.DEMO_PELADEN) {
     $('#mResetDemo').onclick = function (e) { e.preventDefault(); if (confirm('Hapus semua perubahan demo dan kembali ke data contoh awal?')) { window.DEMO_PELADEN.reset(); S.antrian = []; simpanAntrian(); Simpan.hapus(KUNCI.boot); toast('Data demo diatur ulang.', 'ok'); } };
     var akun = window.DEMO_PELADEN.akunDemo();
@@ -6444,6 +6447,10 @@ function setSistem(el) {
 
 /** Riwayat rilis yang ditampilkan di Tentang ▸ Versi (terbaru di atas). */
 var RIWAYAT_RILIS = [
+  { versi: '1.3.1', tanggal: '2026-10-16', butir: [
+    'PWA Android: identitas aplikasi unik di manifest (id & start_url sendiri) agar tidak tertukar dengan aplikasi lain di domain github.io yang sama; ikon layar utama tetap terbuka saat luring.',
+    'Tentang ▸ Pasang di HP: tombol pasang, pemeriksaan kesiapan (HTTPS, peramban, manifest, service worker) dan langkah mengatasi "Aplikasi tidak dapat dibuka".',
+    'Tawaran pasang sekali di versi PWA; tautan "Pasang di HP" di layar masuk.'] },
   { versi: '1.3.0', tanggal: '2026-10-16', butir: [
     'Dokumentasi foto bukti lapangan di formulir Data Lapangan & infrastruktur: ambil dari kamera atau galeri, banyak foto sekaligus, dikompres di perangkat (±400 KB) lalu disimpan di Google Drive - Spreadsheet hanya menyimpan ID & URL.',
     'Foto saat luring menunggu di perangkat (IndexedDB) dan terkirim otomatis saat daring; galeri foto per blok di inspektor peta.',
@@ -6699,12 +6706,13 @@ function hapusDataPerangkat() {
 PENANGAN_TAB.tentang = {
   buka: function (w, sub) {
     sub = sub || 'versi';
-    w.innerHTML = '<div class="lebar"><h2>ℹ️ Tentang</h2>' + subtabHtml('tentang', [['versi', 'Versi'], ['sk', 'Syarat & Ketentuan'], ['privasi', 'Privasi'], ['sumber', 'Sumber Terbuka']], sub) + '<div class="kartu naskahKartu" id="tentangIsi"></div><div id="tentangTambah"></div></div>';
+    w.innerHTML = '<div class="lebar"><h2>ℹ️ Tentang</h2>' + subtabHtml('tentang', [['versi', 'Versi'], ['pasang', 'Pasang di HP'], ['sk', 'Syarat & Ketentuan'], ['privasi', 'Privasi'], ['sumber', 'Sumber Terbuka']], sub) + '<div class="kartu naskahKartu" id="tentangIsi"></div><div id="tentangTambah"></div></div>';
     pasangSubtab(w, 'tentang');
     var el = $('#tentangIsi');
     if (sub === 'sk') el.innerHTML = teksSK();
     else if (sub === 'privasi') { el.innerHTML = teksPrivasi(); $('#tentangTambah').innerHTML = htmlTindakanPrivasi(); pasangTindakanPrivasi($('#tentangTambah')); }
     else if (sub === 'sumber') el.innerHTML = TEKS_SUMBER;
+    else if (sub === 'pasang') { el.classList.remove('kartu'); el.innerHTML = htmlPasangKartu(); pasangKartuPasang(el); }
     else { el.innerHTML = htmlVersi(); pasangVersi(el); }
   }
 };
@@ -6760,6 +6768,113 @@ function tampilkanPersetujuan() {
       g.classList.remove('sembunyi'); cek();
     });
   };
+}
+
+// ---------------------------------------------------------------------
+//  Pasang sebagai aplikasi (PWA) + diagnosis bila Android menolak
+//  ("Aplikasi tidak dapat dibuka", ikon tidak muncul, dsb.)
+// ---------------------------------------------------------------------
+var PASANG = { prompt: null, terpasang: false, ditawarkan: false };
+window.addEventListener('beforeinstallprompt', function (e) {
+  e.preventDefault();
+  PASANG.prompt = e;
+  var b = document.getElementById('tblPasangSekarang'); if (b) b.disabled = false;
+  tawarkanPasang();
+});
+window.addEventListener('appinstalled', function () {
+  PASANG.prompt = null; PASANG.terpasang = true;
+  toast('SawitGIS terpasang. Buka dari ikon di layar utama.', 'ok', 6000);
+});
+function modeMandiri() {
+  try { return window.matchMedia('(display-mode: standalone)').matches || window.matchMedia('(display-mode: minimal-ui)').matches || navigator.standalone === true; } catch (e) { return false; }
+}
+/** Jenis peramban - penyebab paling sering gagal pasang di Android adalah peramban dalam aplikasi chat/sosmed. */
+function jenisPeramban() {
+  var ua = navigator.userAgent || '';
+  if (/FBAN|FBAV|Instagram|Line\/|WhatsApp|Telegram|TikTok|Snapchat|; wv\)/i.test(ua)) return { k: 'dalam', n: 'peramban di dalam aplikasi (WhatsApp/Instagram/Facebook/Telegram)', ok: false };
+  if (/SamsungBrowser/i.test(ua)) return { k: 'samsung', n: 'Samsung Internet', ok: true };
+  if (/MiuiBrowser|XiaoMi/i.test(ua)) return { k: 'mi', n: 'Mi Browser', ok: false };
+  if (/OPR\/|Opera/i.test(ua)) return { k: 'opera', n: 'Opera', ok: true };
+  if (/Firefox\//i.test(ua)) return { k: 'firefox', n: 'Firefox', ok: false };
+  if (/EdgA?\//i.test(ua)) return { k: 'edge', n: 'Microsoft Edge', ok: true };
+  if (/iPhone|iPad|iPod/i.test(ua)) return { k: 'ios', n: 'Safari iOS', ok: true };
+  if (/Chrome\//i.test(ua)) return { k: 'chrome', n: 'Google Chrome', ok: true };
+  return { k: 'lain', n: 'peramban tidak dikenal', ok: false };
+}
+function periksaPasang() {
+  var hasil = [], tambah = function (l, ok, c) { hasil.push({ l: l, ok: ok, c: c || '' }); };
+  var p = jenisPeramban();
+  if (S.mode === 'gas') {
+    tambah('Versi yang dibuka', false, 'Ini versi Google Apps Script (script.google.com) - tidak dapat dipasang sebagai aplikasi. Buka alamat GitHub Pages (versi PWA), mis. https://NAMA.github.io/REPO/.');
+    return Promise.resolve(hasil);
+  }
+  tambah('Koneksi aman (HTTPS)', !!window.isSecureContext, window.isSecureContext ? '' : 'PWA hanya dapat dipasang dari alamat https://.');
+  tambah('Peramban', p.ok, p.ok ? p.n : p.n + ' tidak dapat memasang aplikasi. Ketuk ⋮ ▸ "Buka di Chrome" / "Buka di peramban", lalu pasang dari Google Chrome.');
+  tambah('Sudah berjalan sebagai aplikasi', modeMandiri(), modeMandiri() ? 'Anda sedang membuka versi terpasang.' : 'Masih dibuka di tab peramban.');
+  var link = document.querySelector('link[rel=manifest]');
+  var cekManifest = link ? fetch(link.href, { cache: 'no-store' }).then(function (r) {
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return r.json();
+  }).then(function (m) {
+    var ikon = (m.icons || []).some(function (i) { return /512/.test(i.sizes || ''); });
+    tambah('Berkas manifest.webmanifest', !!(m.start_url && m.name && ikon), 'start_url ' + m.start_url + ', cakupan ' + (m.scope || '-') + (ikon ? '' : ' • ikon 512 px tidak ada'));
+  }).catch(function (e) { tambah('Berkas manifest.webmanifest', false, 'Tidak terbaca (' + e.message + '). Pastikan berkas ada di folder yang sama dengan index.html di GitHub.'); }) : Promise.resolve(tambah('Berkas manifest.webmanifest', false, 'Tautan manifest tidak ada di index.html.'));
+  var cekSw = 'serviceWorker' in navigator ? navigator.serviceWorker.getRegistration().then(function (r) {
+    if (!r) { tambah('Service worker (mode luring)', false, 'Belum terpasang. Muat ulang halaman sekali saat daring.'); return; }
+    var lingkup = r.scope, halaman = location.href.split('?')[0].replace(/[^/]*$/, '');
+    tambah('Service worker (mode luring)', !!r.active && lingkup === halaman, 'cakupan ' + lingkup + (lingkup !== halaman ? ' - BERBEDA dengan folder aplikasi (' + halaman + '). Aplikasi lain di domain yang sama mungkin "menguasai" alamat ini.' : ''));
+  }) : Promise.resolve(tambah('Service worker (mode luring)', false, 'Peramban tidak mendukung service worker.'));
+  return Promise.all([cekManifest, cekSw]).then(function () {
+    tambah('Tawaran pasang dari peramban', !!PASANG.prompt || modeMandiri(), PASANG.prompt ? 'Siap - tekan "Pasang sekarang".' : (modeMandiri() ? '' : 'Belum tersedia. Chrome menawarkan pasang setelah halaman dibuka beberapa detik; atau gunakan menu ⋮ ▸ "Instal aplikasi" / "Tambahkan ke layar utama".'));
+    return hasil;
+  });
+}
+var HTML_ATASI_PASANG = '<h4>Bila Android menampilkan "Aplikasi tidak dapat dibuka" / ikon tidak muncul</h4><ol class="langkahAr">' +
+  '<li><b>Hapus pemasangan lama</b>: tekan lama ikon SawitGIS ▸ Hapus / Copot. Periksa juga <b>Setelan Android ▸ Aplikasi</b> - bila ada "SawitGIS", copot. Ikon lama yang rusak sering menyebabkan pesan ini.</li>' +
+  '<li>Buka alamat aplikasi di <b>Google Chrome</b> (bukan dari dalam WhatsApp/Instagram/Facebook - salin tautannya, tempel di Chrome).</li>' +
+  '<li>Perbarui <b>Google Chrome</b>, <b>Google Play Store</b>, dan <b>Layanan Google Play</b> di Play Store. Android memasang aplikasi web lewat Play (WebAPK); bila Play dinonaktifkan atau versinya lama, pemasangan gagal.</li>' +
+  '<li>Pastikan Chrome tidak dinonaktifkan dan izinkan Chrome <b>menambahkan pintasan / ikon ke layar utama</b> (Setelan ▸ Aplikasi ▸ Chrome ▸ Izin; di Xiaomi/Oppo/Vivo: izin "Pintasan layar utama"). Di launcher Samsung/Pixel aktifkan <b>"Tambahkan ikon aplikasi ke Layar Utama"</b>.</li>' +
+  '<li>Matikan sementara <b>mode hemat data / VPN / pemblokir iklan</b>, lalu di Chrome: ⋮ ▸ <b>Instal aplikasi</b> (atau "Tambahkan ke layar utama" ▸ Instal). Tunggu notifikasi "SawitGIS ditambahkan".</li>' +
+  '<li>Satu domain GitHub (NAMA.github.io) untuk banyak aplikasi: setiap aplikasi harus di <b>folder/repo sendiri</b>. Bila ada aplikasi PWA di akar domain (cakupan "/"), aplikasi itu dapat "menguasai" alamat SawitGIS - pindahkan ke repo tersendiri.</li>' +
+  '<li>Masih gagal? Pakai sementara versi peramban: Chrome ⋮ ▸ "Tambahkan ke layar utama" ▸ <b>Buat pintasan</b>. Semua fitur, termasuk luring, tetap berjalan.</li></ol>';
+
+function htmlPasangKartu() {
+  return '<div class="kartu" id="kartuPasang"><h3>📲 Pasang di HP (aplikasi PWA)</h3>' +
+    '<p class="redup">Versi GitHub Pages dapat dipasang seperti aplikasi: ikon di layar utama, layar penuh, dan tetap terbuka tanpa sinyal.</p>' +
+    '<div class="baris"><button class="tbl utama" id="tblPasangSekarang"' + (PASANG.prompt ? '' : ' disabled') + '>📲 Pasang sekarang</button><button class="tbl" id="tblCekPasang">🔎 Periksa kesiapan</button></div>' +
+    '<div id="hasilCekPasang" style="margin-top:10px"></div>' + HTML_ATASI_PASANG + '</div>';
+}
+function pasangKartuPasang(el) {
+  var b = $('#tblPasangSekarang', el), c = $('#tblCekPasang', el), out = $('#hasilCekPasang', el);
+  if (b) b.onclick = function () {
+    if (!PASANG.prompt) { toast('Gunakan menu Chrome ⋮ ▸ "Instal aplikasi".', 'galat', 5000); return; }
+    PASANG.prompt.prompt();
+    PASANG.prompt.userChoice.then(function (r) { if (r && r.outcome !== 'accepted') toast('Pemasangan dibatalkan.'); }).catch(function () { });
+    PASANG.prompt = null; b.disabled = true;
+  };
+  var jalan = function () {
+    out.innerHTML = '<span class="redup">Memeriksa…</span>';
+    periksaPasang().then(function (h) {
+      out.innerHTML = '<div class="gulirX"><table class="tabel">' + h.map(function (x) {
+        return '<tr><td style="width:28px">' + (x.ok ? '✅' : '⚠️') + '</td><td><b>' + esc(x.l) + '</b>' + (x.c ? '<div class="redup kecilTeks">' + esc(x.c) + '</div>' : '') + '</td></tr>';
+      }).join('') + '</table></div>';
+    });
+  };
+  if (c) c.onclick = jalan;
+  jalan();
+}
+/** Tawaran pasang sekali per perangkat (tidak mengganggu bila sudah ditolak). */
+function tawarkanPasang() {
+  if (PASANG.ditawarkan || modeMandiri() || !PASANG.prompt || !S.saya) return;
+  var pref = Simpan.ambil(KUNCI.pref, {});
+  if (pref.tolakPasang && Date.now() - pref.tolakPasang < 30 * 864e5) return;
+  PASANG.ditawarkan = true;
+  var el = document.createElement('div');
+  el.id = 'tawarPasang';
+  el.innerHTML = '<span>📲 Pasang SawitGIS di layar utama untuk dibuka cepat & luring.</span><div class="baris" style="flex-wrap:nowrap"><button class="tbl utama kecil" id="tpYa">Pasang</button><button class="tbl kecil" id="tpNanti">Nanti</button></div>';
+  document.body.appendChild(el);
+  $('#tpYa').onclick = function () { el.remove(); if (PASANG.prompt) { PASANG.prompt.prompt(); PASANG.prompt = null; } };
+  $('#tpNanti').onclick = function () { el.remove(); var p = Simpan.ambil(KUNCI.pref, {}); p.tolakPasang = Date.now(); Simpan.taruh(KUNCI.pref, p); };
 }
 
 /* ---- 17-mulai.js ---- */
@@ -6826,6 +6941,7 @@ function selesaiMulai() {
   if (S.antrian.length) setTimeout(function () { sinkronkan(true); }, 1500);
   setTimeout(function () { hitungAntriFoto().then(function (a) { if (a.length) kirimAntriFoto(true); }); }, 2500);
   setTimeout(function () { muatRekap().catch(function () { }); }, 300);
+  if (S.mode === 'pwa') setTimeout(tawarkanPasang, 4000);
 }
 
 /** Ambil data terbaru tanpa menghalangi tampilan; gambar ulang HANYA bila datanya berubah. */

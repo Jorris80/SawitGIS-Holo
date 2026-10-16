@@ -1,18 +1,37 @@
 {
-  "id": "./",
+  "id": "./?app=sawitgis-hologram-3d",
   "name": "SawitGIS Hologram 3D",
   "short_name": "SawitGIS",
   "description": "GIS, Digital Twin 3D, Hologram & tata air gambut kebun kelapa sawit berbasis Google Sheets",
   "lang": "id",
-  "start_url": "./",
+  "start_url": "./?sumber=pwa",
   "scope": "./",
   "display": "standalone",
   "orientation": "any",
   "background_color": "#020617",
   "theme_color": "#020617",
-  "categories": ["productivity", "business", "utilities"],
+  "categories": [
+    "productivity",
+    "business",
+    "utilities"
+  ],
   "icons": [
-    { "src": "ikon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "ikon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
-  ]
+    {
+      "src": "ikon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "ikon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "display_override": [
+    "standalone",
+    "minimal-ui"
+  ],
+  "prefer_related_applications": false
 }
